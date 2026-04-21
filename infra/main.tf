@@ -34,7 +34,8 @@ resource "azurerm_search_service" "this" {
 }
 
 ##############################################################################
-# Azure AI Foundry (AIServices multi-service resource)
+# Azure AI Foundry (AIServices - single resource in Sweden Central)
+# Hosts both embeddings and GPT-5.1 in the same region
 ##############################################################################
 
 resource "azurerm_cognitive_account" "foundry" {
@@ -51,7 +52,7 @@ resource "azurerm_cognitive_account" "foundry" {
   }
 }
 
-# Embedding model (francecentral - used by AI Search skillset)
+# Embedding model (used by AI Search skillset)
 resource "azurerm_cognitive_deployment" "embedding" {
   name                 = var.embedding_model
   cognitive_account_id = azurerm_cognitive_account.foundry.id
@@ -68,27 +69,10 @@ resource "azurerm_cognitive_deployment" "embedding" {
   }
 }
 
-##############################################################################
-# GPT-5.1 (Sweden Central - Data Zone deployment)
-##############################################################################
-
-resource "azurerm_cognitive_account" "foundry_sweden" {
-  name                  = "ai-procurement-${local.name_suffix}-swe"
-  resource_group_name   = azurerm_resource_group.this.name
-  location              = "swedencentral"
-  kind                  = "AIServices"
-  sku_name              = "S0"
-  tags                  = local.default_tags
-  custom_subdomain_name = "ai-procurement-${local.name_suffix}-swe"
-
-  identity {
-    type = "SystemAssigned"
-  }
-}
-
+# GPT-5.1 (Data Zone deployment)
 resource "azurerm_cognitive_deployment" "gpt51" {
   name                 = "gpt-51"
-  cognitive_account_id = azurerm_cognitive_account.foundry_sweden.id
+  cognitive_account_id = azurerm_cognitive_account.foundry.id
 
   model {
     format  = "OpenAI"

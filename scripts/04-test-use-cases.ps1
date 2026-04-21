@@ -10,8 +10,8 @@ Write-Host "Reading Terraform outputs..." -ForegroundColor Yellow
 Push-Location (Join-Path $PSScriptRoot "..\infra")
 $searchEndpoint  = terraform output -raw search_service_endpoint
 $searchKey       = terraform output -raw search_admin_key
-$foundryEndpoint = (terraform output -raw foundry_sweden_endpoint).TrimEnd('/')
-$foundryKey      = terraform output -raw foundry_sweden_key
+$foundryEndpoint = (terraform output -raw openai_endpoint).TrimEnd('/')
+$foundryKey      = terraform output -raw openai_key
 $gptDeployment   = terraform output -raw gpt51_deployment_name
 Pop-Location
 

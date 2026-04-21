@@ -98,7 +98,7 @@ notepad terraform.tfvars
 subscription_id     = "<YOUR_SUBSCRIPTION_ID>"
 tenant_id           = "<YOUR_TENANT_ID>"
 resource_group_name = "rg-procurement-rag"
-location            = "francecentral"
+location            = "swedencentral"
 search_sku          = "basic"
 ```
 
@@ -110,9 +110,8 @@ terraform apply
 
 > **What gets created:**
 > - Resource Group `rg-procurement-rag`
-> - Azure AI Search (basic SKU) with managed identity
-> - Azure AI Services (France Central) with `text-embedding-ada-002` deployment
-> - Azure AI Services (Sweden Central) with `gpt-5.1` deployment
+> - Azure AI Search (basic SKU) with semantic reranker and managed identity
+> - Azure AI Services (Sweden Central) with `text-embedding-ada-002` + `gpt-5.1` deployments
 > - Entra ID App Registration with Sites.Read.All permission (for SharePoint indexer)
 
 **Verify:** Note the outputs - you'll need the search endpoint and keys later.

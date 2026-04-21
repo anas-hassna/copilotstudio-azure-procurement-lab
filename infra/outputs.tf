@@ -28,15 +28,6 @@ output "openai_embedding_deployment" {
   value = azurerm_cognitive_deployment.embedding.name
 }
 
-output "foundry_sweden_endpoint" {
-  value = azurerm_cognitive_account.foundry_sweden.endpoint
-}
-
-output "foundry_sweden_key" {
-  value     = azurerm_cognitive_account.foundry_sweden.primary_access_key
-  sensitive = true
-}
-
 output "gpt51_deployment_name" {
   value = azurerm_cognitive_deployment.gpt51.name
 }

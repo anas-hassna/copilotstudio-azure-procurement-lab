@@ -1,6 +1,6 @@
 subscription_id    = "00000000-0000-0000-0000-000000000000"
 resource_group_name = "rg-procurement-rag"
-location           = "francecentral"
+location           = "swedencentral"
 environment_name   = "poc"
 
 # AI Search - basic is enough for POC (free tier has no skillset support)
