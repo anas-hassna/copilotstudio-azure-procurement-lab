@@ -1,0 +1,11 @@
+subscription_id    = "00000000-0000-0000-0000-000000000000"
+resource_group_name = "rg-procurement-rag"
+location           = "francecentral"
+environment_name   = "poc"
+
+# AI Search - basic is enough for POC (free tier has no skillset support)
+search_sku = "basic"
+
+# SharePoint
+sharepoint_site_name  = "Marches GHT Contoso"
+sharepoint_site_alias = "marches-ght-contoso"

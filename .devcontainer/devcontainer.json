@@ -1,0 +1,55 @@
+{
+  "name": "Copilot Studio - Procurement RAG Lab",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+
+  "features": {
+    "ghcr.io/devcontainers/features/azure-cli:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/terraform:1": {
+      "version": "1.13",
+      "tflint": "latest"
+    },
+    "ghcr.io/devcontainers/features/powershell:1": {
+      "version": "7.6"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-copilotstudio.vscode-copilotstudio",
+        "microsoft-IsvExpTools.powerplatform-vscode",
+        "ms-azuretools.vscode-azurecli",
+        "ms-vscode.azure-account",
+        "hashicorp.terraform",
+        "ms-vscode.powershell",
+        "GitHub.copilot",
+        "GitHub.copilot-chat"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "pwsh",
+        "files.eol": "\n",
+        "editor.formatOnSave": true,
+        "powershell.powerShellDefaultVersion": "PowerShell (pwsh)"
+      }
+    }
+  },
+
+  "postCreateCommand": "pwsh -Command 'az bicep install 2>$null; Write-Host \"Dev container ready.\" -ForegroundColor Green'",
+
+  "remoteUser": "vscode",
+
+  "forwardPorts": [],
+
+  "remoteEnv": {
+    "ARM_SUBSCRIPTION_ID": "${localEnv:ARM_SUBSCRIPTION_ID}",
+    "ARM_TENANT_ID": "${localEnv:ARM_TENANT_ID}"
+  }
+}

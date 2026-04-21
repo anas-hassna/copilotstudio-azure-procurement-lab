@@ -1,0 +1,3 @@
+﻿connectionReferences:
+  - connectionReferenceLogicalName: cre12_ProcurementAgent.cr.LIhvq3ri
+    connectorId: /providers/Microsoft.PowerApps/apis/shared_azureaisearch

@@ -1,0 +1,147 @@
+mcs.metadata:
+  componentName: Analyse et challenge candidats
+  description: Utilise ce topic quand un acheteur veut analyser, vérifier ou challenger le choix des candidats d'un marché public. Cela inclut reconstituer la grille de notation des offres, comparer les candidats (prix, note technique, note globale, rang), proposer une analyse critique du classement, identifier les écarts avec le choix de l'acheteur, simuler un classement avec une pondération différente, vérifier si le bon candidat a été retenu, et consulter l'historique d'un fournisseur sur d'autres marchés. L'utilisateur veut que l'IA donne son propre avis sur l'attribution.
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  priority: 3
+  intent: {}
+
+  actions:
+    - kind: Question
+      id: askCandidateRef
+      interruptionPolicy:
+        allowInterruption: true
+      variable: init:Topic.Reference
+      prompt: Pour quel marché souhaitez-vous analyser le choix des candidats ? Donnez la référence (ex: AO-2023-DM-0312) ou décrivez le marché.
+      entity: StringPrebuiltEntity
+
+    - kind: Question
+      id: askAnalysisMode
+      interruptionPolicy:
+        allowInterruption: true
+      variable: init:Topic.AnalysisMode
+      prompt: |
+        Quel type d'analyse souhaitez-vous ?
+        1. **reconstruct** - Reconstituer la grille de notation et le classement
+        2. **challenge** - Challenger le choix avec analyse critique
+        3. **compare** - Comparer mon choix avec celui de l'acheteur
+        4. **full** - Analyse complète (reconstitution + challenge + recommandation)
+
+        Répondez par le mot-clé : reconstruct, challenge, compare ou full.
+      entity: StringPrebuiltEntity
+
+    - kind: ConditionGroup
+      id: analysisModeBranch
+      conditions:
+        # --- Reconstruct grading grid ---
+        - id: reconstructBranch
+          condition: =Topic.AnalysisMode = "reconstruct"
+          actions:
+            - kind: SearchAndSummarizeContent
+              id: searchReconstruct
+              variable: Topic.Answer
+              userInput: =Concatenate("Pour le marché ", Topic.Reference, ", reconstitue la grille complète de notation des candidats. Pour chaque candidat, indique : nom, prix proposé, note technique (détail par sous-critère si disponible), note prix, note globale, rang. Présente sous forme de tableau : | Candidat | Prix HT | Note technique | Note prix | Note globale | Rang |. Indique aussi les critères de pondération utilisés.")
+              moderationLevel: Low
+
+        # --- Challenge the choice ---
+        - id: challengeBranch
+          condition: =Topic.AnalysisMode = "challenge"
+          actions:
+            - kind: SearchAndSummarizeContent
+              id: searchChallenge
+              variable: Topic.Answer
+              userInput: =Concatenate("Pour le marché ", Topic.Reference, ", fais une analyse critique du choix de l'acheteur : 1) Reconstitue le classement officiel 2) Propose TON propre classement en justifiant chaque critère 3) Compare ton classement avec celui de l'acheteur 4) Identifie les écarts et explique pourquoi tu es d'accord ou pas 5) Identifie les risques du choix actuel (dépendance fournisseur, prix anormalement bas, capacité de livraison) 6) Donne ta recommandation finale. Sois constructif : arguments pour ET contre.")
+              moderationLevel: Low
+
+        # --- Compare with buyer's choice ---
+        - id: compareBranch
+          condition: =Topic.AnalysisMode = "compare"
+          actions:
+            - kind: Question
+              id: askBuyerChoice
+              variable: init:Topic.BuyerChoice
+              prompt: Quel candidat aviez-vous choisi (ou envisagez-vous de choisir) ?
+              entity: StringPrebuiltEntity
+
+            - kind: SearchAndSummarizeContent
+              id: searchCompare
+              variable: Topic.Answer
+              userInput: =Concatenate("Pour le marché ", Topic.Reference, ", l'acheteur a choisi ou envisage de choisir le candidat ", Topic.BuyerChoice, ". Analyse cette décision : 1) Reconstitue la grille de notation complète de tous les candidats 2) Positionne ", Topic.BuyerChoice, " par rapport aux autres 3) Identifie les forces et faiblesses de ce choix 4) Compare avec le candidat mieux classé (s'il y en a un) 5) Donne ton avis : est-ce le meilleur choix ? Quels risques ? Quelles alternatives ?")
+              moderationLevel: Low
+
+      # --- Full analysis ---
+      elseActions:
+        - kind: SearchAndSummarizeContent
+          id: searchFull
+          variable: Topic.Answer
+          userInput: =Concatenate("Pour le marché ", Topic.Reference, ", fais une analyse COMPLÈTE du choix des candidats : PARTIE 1 - RECONSTITUTION : Grille de notation complète sous forme de tableau | Candidat | Prix HT | Note technique (détail) | Note prix | Total | Rang |. PARTIE 2 - MON ANALYSE CRITIQUE : Mon propre classement avec justification, points d'accord et de désaccord avec l'acheteur. PARTIE 3 - RISQUES : Risques identifiés (prix anormalement bas, dépendance, capacité, conformité). PARTIE 4 - RECOMMANDATION : Ma recommandation finale et suggestions d'amélioration pour les prochains marchés.")
+          moderationLevel: Low
+
+    - kind: ConditionGroup
+      id: hasCandidateAnswer
+      conditions:
+        - id: candidateAnswerFound
+          condition: =!IsBlank(Topic.Answer)
+          actions:
+            - kind: SendActivity
+              id: sendCandidateAnswer
+              activity: =Topic.Answer
+
+            # Offer to go deeper
+            - kind: Question
+              id: askDeeper
+              interruptionPolicy:
+                allowInterruption: true
+              variable: init:Topic.DeeperAnalysis
+              prompt: |
+                Souhaitez-vous aller plus loin ?
+                1. **supplierHistory** - Voir l'historique de ce fournisseur sur d'autres marchés
+                2. **alternativeScoring** - Simuler avec une pondération différente des critères
+                3. **done** - Non, c'est suffisant
+
+                Répondez par : supplierHistory, alternativeScoring ou done.
+              entity: StringPrebuiltEntity
+
+            - kind: ConditionGroup
+              id: deeperBranch
+              conditions:
+                - id: historyBranch
+                  condition: =Topic.DeeperAnalysis = "supplierHistory"
+                  actions:
+                    - kind: SearchAndSummarizeContent
+                      id: searchHistory
+                      variable: Topic.HistoryAnswer
+                      userInput: =Concatenate("Recherche tous les marchés où le candidat attributaire du marché ", Topic.Reference, " apparaît. Pour chaque marché trouvé, indique : référence, date, montant, note obtenue, rang. Identifie les tendances : ce fournisseur est-il récurrent ? Ses prix augmentent-ils ? Ses notes techniques sont-elles stables ?")
+                      moderationLevel: Low
+                    - kind: SendActivity
+                      id: sendHistory
+                      activity: =Topic.HistoryAnswer
+
+                - id: scoringBranch
+                  condition: =Topic.DeeperAnalysis = "alternativeScoring"
+                  actions:
+                    - kind: Question
+                      id: askNewWeights
+                      variable: init:Topic.NewWeights
+                      prompt: Quelle pondération souhaitez-vous tester ? (ex: technique 60% / prix 40%, ou technique 70% / prix 30%)
+                      entity: StringPrebuiltEntity
+
+                    - kind: SearchAndSummarizeContent
+                      id: searchAltScoring
+                      variable: Topic.AltScoringAnswer
+                      userInput: =Concatenate("Pour le marché ", Topic.Reference, ", reprends les notes de chaque candidat et recalcule le classement avec la pondération suivante : ", Topic.NewWeights, ". Présente l'ancien classement vs le nouveau classement côte à côte. Indique si le changement de pondération modifie l'attributaire.")
+                      moderationLevel: Low
+                    - kind: SendActivity
+                      id: sendAltScoring
+                      activity: =Topic.AltScoringAnswer
+
+      elseActions:
+        - kind: SendActivity
+          id: noCandidateResult
+          activity: Je n'ai pas trouvé de rapport d'analyse des offres pour le marché **{Topic.Reference}**. Ce marché existe-t-il dans la base ? Essayez avec la référence exacte.
+
+    - kind: EndDialog
+      id: endCandidateAnalysis
+      clearTopicQueue: true

@@ -1,0 +1,134 @@
+mcs.metadata:
+  componentName: Analyse conformité marché
+  description: Utilise ce topic quand un acheteur veut vérifier la conformité réglementaire d'un appel d'offres ou d'un marché public. Cela inclut l'analyse des spécifications techniques (normes CE, ISO, ANSM, pharmacopée), la conformité procédurale (type de procédure, seuils, publicité, délais), la conformité financière (allotissement, critères prix, offres anormalement basses), et la génération de checklists de mise en conformité. Inclut aussi la comparaison avec un marché similaire conforme (benchmark) et l'étude de marché.
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  priority: 4
+  intent: {}
+  actions:
+    - kind: Question
+      id: askConformityRef
+      interruptionPolicy:
+        allowInterruption: true
+
+      variable: init:Topic.Reference
+      prompt: Pour quel marché ou appel d'offres souhaitez-vous vérifier la conformité ? Donnez la référence ou décrivez-le.
+      entity: StringPrebuiltEntity
+
+    - kind: Question
+      id: askConformityScope
+      interruptionPolicy:
+        allowInterruption: true
+
+      variable: init:Topic.ConformityScope
+      prompt: |
+        Quel aspect de la conformité souhaitez-vous vérifier ?
+        1. **technical** - Spécifications techniques et normes (CE, ISO, ANSM)
+        2. **procedural** - Conformité procédurale (procédure, publicité, délais)
+        3. **financial** - Conformité financière (critères prix, seuils, allotissement)
+        4. **full** - Analyse de conformité complète
+
+        Répondez par : technical, procedural, financial ou full.
+      entity: StringPrebuiltEntity
+
+    - kind: ConditionGroup
+      id: conformityScopeBranch
+      conditions:
+        - id: technicalBranch
+          condition: =Topic.ConformityScope = "technical"
+          actions:
+            - kind: SearchAndSummarizeContent
+              id: searchTechnical
+              variable: Topic.Answer
+              userInput: "=Concatenate(\"Pour le marché \", Topic.Reference, \", analyse la conformité technique : 1) Normes exigées (CE, ISO, ANSM, pharmacopée) - sont-elles toutes mentionnées ? 2) Spécifications techniques obligatoires - sont-elles précises et mesurables ? 3) Critères de performance - sont-ils vérifiables ? 4) Certifications demandées aux candidats 5) Points de vigilance : spécifications manquantes, normes obsolètes, critères discriminatoires. Présente sous forme de checklist : | Exigence | Présente | Conforme | Risque |\")"
+              moderationLevel: Low
+
+        - id: proceduralBranch
+          condition: =Topic.ConformityScope = "procedural"
+          actions:
+            - kind: SearchAndSummarizeContent
+              id: searchProcedural
+              variable: Topic.Answer
+              userInput: "=Concatenate(\"Pour le marché \", Topic.Reference, \", vérifie la conformité procédurale : type de procédure (AO ouvert, restreint, MAPA), seuils respectés, délais de publicité, nombre de lots, critères d'attribution et pondération, variantes autorisées, durée du marché. Identifie les anomalies ou manquements.\")"
+              moderationLevel: Low
+
+        - id: financialBranch
+          condition: =Topic.ConformityScope = "financial"
+          actions:
+            - kind: SearchAndSummarizeContent
+              id: searchFinancial
+              variable: Topic.Answer
+              userInput: "=Concatenate(\"Pour le marché \", Topic.Reference, \", analyse la conformité financière : montant estimé vs seuils de procédure, allotissement (justifié ?), critère prix (pondération adéquate ?), analyse des offres anormalement basses, révision de prix prévue, avances et acomptes. Identifie les risques financiers.\")"
+              moderationLevel: Low
+
+      elseActions:
+        - kind: SearchAndSummarizeContent
+          id: searchFullConformity
+          variable: Topic.Answer
+          userInput: "=Concatenate(\"Pour le marché \", Topic.Reference, \", fais une analyse de conformité COMPLÈTE : TECHNIQUE : normes (CE, ISO, ANSM), spécifications, certifications. PROCÉDURALE : type de procédure, seuils, délais, publicité. FINANCIÈRE : montants, allotissement, critère prix, offres anormalement basses. Pour chaque point, indique : conforme/non conforme/à vérifier, avec justification. Termine par une synthèse des risques et recommandations. Format checklist avec tableau.\")"
+          moderationLevel: Low
+
+    - kind: ConditionGroup
+      id: hasConformityAnswer
+      conditions:
+        - id: conformityAnswerFound
+          condition: =!IsBlank(Topic.Answer)
+          actions:
+            - kind: SendActivity
+              id: sendConformityAnswer
+              activity: =Topic.Answer
+
+            - kind: Question
+              id: askConformityFollowup
+              interruptionPolicy:
+                allowInterruption: true
+
+              variable: init:Topic.ConformityFollowup
+              prompt: |
+                Souhaitez-vous aller plus loin ?
+                1. **benchmark** - Comparer avec un marché similaire conforme
+                2. **checklist** - Générer une checklist de mise en conformité
+                3. **done** - Non, c'est suffisant
+
+                Répondez par : benchmark, checklist ou done.
+              entity: StringPrebuiltEntity
+
+            - kind: ConditionGroup
+              id: conformityFollowupBranch
+              conditions:
+                - id: benchmarkBranch
+                  condition: =Topic.ConformityFollowup = "benchmark"
+                  actions:
+                    - kind: SearchAndSummarizeContent
+                      id: searchBenchmark
+                      variable: Topic.BenchmarkAnswer
+                      userInput: "=Concatenate(\"Trouve un marché similaire au marché \", Topic.Reference, \" (même catégorie/type de produit) qui soit bien structuré et conforme. Compare les deux marchés point par point : normes exigées, critères, allotissement, procédure. Tableau comparatif montrant ce que le marché \", Topic.Reference, \" pourrait améliorer.\")"
+                      moderationLevel: Low
+
+                    - kind: SendActivity
+                      id: sendBenchmark
+                      activity: =Topic.BenchmarkAnswer
+
+                - id: checklistBranch
+                  condition: =Topic.ConformityFollowup = "checklist"
+                  actions:
+                    - kind: SearchAndSummarizeContent
+                      id: searchChecklist
+                      variable: Topic.ChecklistAnswer
+                      userInput: "=Concatenate(\"Sur la base de l'analyse de conformité du marché \", Topic.Reference, \", génère une checklist actionnable de mise en conformité. Pour chaque point non conforme ou à risque, indique : l'action corrective, la priorité (haute/moyenne/basse), le responsable suggéré (acheteur/juriste/technicien).\")"
+                      moderationLevel: Low
+
+                    - kind: SendActivity
+                      id: sendChecklist
+                      activity: =Topic.ChecklistAnswer
+
+      elseActions:
+        - kind: SendActivity
+          id: noConformityResult
+          activity: Je n'ai pas trouvé suffisamment d'informations pour analyser la conformité du marché **{Topic.Reference}**. Vérifiez la référence ou essayez avec une description du marché.
+
+    - kind: EndDialog
+      id: endConformity
+      clearTopicQueue: true

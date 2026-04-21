@@ -1,0 +1,24 @@
+mcs.metadata:
+  componentName: Procurement Agent - Azure AI Search
+  description: |+
+    Base de données des marchés publics du GHT Contoso : appels d'offres, études de marché, rapports d'analyse, cahiers des charges, grilles de notation des candidats, SLA, pénalités, conformité technique. Catégories : biomédical, dispositifs médicaux, équipements, hôtellerie, informatique, laboratoires, médicaments, transports.
+
+
+kind: KnowledgeSourceConfiguration
+source:
+  kind: AzureAISearchSource
+  triggerCondition: true
+  connectionReference: cre12_ProcurementAgent.cr.LIhvq3ri
+  indexName: marches-index
+  selectFields:
+    - id
+    - content
+    - metadata_spo_item_name
+    - metadata_spo_item_path
+    - metadata_spo_item_last_modified
+    - metadata_spo_site_library_item_id
+    - chunk
+    - chunk_id
+    - parent_id
+    - title
+  semanticConfigurationName: default

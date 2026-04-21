@@ -1,0 +1,164 @@
+mcs.metadata:
+  componentName: Recherche marché existant
+  description: "Utilise ce topic quand un acheteur veut rechercher un marché public existant dans la base documentaire. Cela inclut la recherche par produit ou équipement (ex: gants, scanner IRM), par référence de marché (ex: AO-2024-DM-0488), par catégorie (dispositifs médicaux, biomédical, laboratoire, IT, médicaments, équipements généraux, hôtellerie, transport), ou par fournisseur. L'utilisateur veut savoir si un marché existe, connaître ses détails (montant, durée, lots, titulaire) ou lister les marchés d'une catégorie."
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  priority: 1
+  intent: {}
+
+  actions:
+    # Step 1: Understand what the buyer is looking for
+    - kind: Question
+      id: askSearchType
+      interruptionPolicy:
+        allowInterruption: true
+      variable: init:Topic.SearchType
+      prompt: |
+        Comment souhaitez-vous rechercher ?
+        1. **byProduct** - Par produit ou équipement (ex: gants chirurgicaux, scanner IRM)
+        2. **byReference** - Par référence de marché (ex: AO-2024-DM-0488)
+        3. **byCategory** - Par catégorie (Dispositifs médicaux, Biomédical, Labo, IT, etc.)
+        4. **bySupplier** - Par fournisseur (ex: Air Liquide, Medline)
+
+        Répondez par : byProduct, byReference, byCategory ou bySupplier.
+      entity: StringPrebuiltEntity
+
+    # Branch: By product
+    - kind: ConditionGroup
+      id: searchTypeBranch
+      conditions:
+        - id: productBranch
+          condition: =Topic.SearchType = "byProduct"
+          actions:
+            - kind: Question
+              id: askProduct
+              variable: init:Topic.ProductName
+              prompt: Quel produit ou équipement recherchez-vous ?
+              entity: StringPrebuiltEntity
+
+            - kind: SearchAndSummarizeContent
+              id: searchByProduct
+              variable: Topic.Answer
+              userInput: =Concatenate("Recherche tous les marchés existants pour le produit ou l'équipement suivant : ", Topic.ProductName, ". Donne la référence du marché, la date, le montant HT, la durée, les lots concernés et le titulaire attributaire.")
+              moderationLevel: Low
+
+            - kind: ConditionGroup
+              id: hasProductAnswer
+              conditions:
+                - id: productAnswerFound
+                  condition: =!IsBlank(Topic.Answer)
+                  actions:
+                    - kind: SendActivity
+                      id: sendProductAnswer
+                      activity: =Topic.Answer
+              elseActions:
+                - kind: SendActivity
+                  id: noProductResult
+                  activity: Je n'ai trouvé aucun marché correspondant à **{Topic.ProductName}** dans la base documentaire. Voulez-vous reformuler ou chercher par catégorie ?
+
+        # Branch: By reference
+        - id: referenceBranch
+          condition: =Topic.SearchType = "byReference"
+          actions:
+            - kind: Question
+              id: askReference
+              variable: init:Topic.Reference
+              prompt: Quelle est la référence du marché ? (ex: AO-2024-DM-0488)
+              entity: StringPrebuiltEntity
+
+            - kind: SearchAndSummarizeContent
+              id: searchByRef
+              variable: Topic.Answer
+              userInput: =Concatenate("Trouve le marché référence ", Topic.Reference, ". Donne tous les détails : objet, date, montant HT/TTC, durée, lots, critères d'attribution, titulaire et principales clauses.")
+              moderationLevel: Low
+
+            - kind: ConditionGroup
+              id: hasRefAnswer
+              conditions:
+                - id: refAnswerFound
+                  condition: =!IsBlank(Topic.Answer)
+                  actions:
+                    - kind: SendActivity
+                      id: sendRefAnswer
+                      activity: =Topic.Answer
+              elseActions:
+                - kind: SendActivity
+                  id: noRefResult
+                  activity: Je n'ai pas trouvé de marché avec la référence **{Topic.Reference}**. Vérifiez le format (ex: AO-2024-DM-0488) ou essayez une recherche par produit.
+
+        # Branch: By category
+        - id: categoryBranch
+          condition: =Topic.SearchType = "byCategory"
+          actions:
+            - kind: Question
+              id: askCategory
+              variable: init:Topic.Category
+              prompt: |
+                Quelle catégorie ?
+                - **DM** - Dispositifs Médicaux
+                - **BIO** - Biomédical
+                - **LAB** - Laboratoire
+                - **MED** - Médicaments / Pharmacie
+                - **IT** - Informatique / Numérique
+                - **EG** - Équipements Généraux
+                - **HOT** - Hôtellerie / Services
+                - **TR** - Transport
+
+                Répondez par le code catégorie (DM, BIO, LAB, MED, IT, EG, HOT ou TR).
+              entity: StringPrebuiltEntity
+
+            - kind: SearchAndSummarizeContent
+              id: searchByCategory
+              variable: Topic.Answer
+              userInput: =Concatenate("Liste tous les marchés de la catégorie ", Topic.Category, ". Pour chaque marché, indique : référence, objet, date, montant HT, durée et titulaire. Présente sous forme de tableau comparatif.")
+              moderationLevel: Low
+
+            - kind: ConditionGroup
+              id: hasCategoryAnswer
+              conditions:
+                - id: categoryAnswerFound
+                  condition: =!IsBlank(Topic.Answer)
+                  actions:
+                    - kind: SendActivity
+                      id: sendCategoryAnswer
+                      activity: =Topic.Answer
+              elseActions:
+                - kind: SendActivity
+                  id: noCategoryResult
+                  activity: Aucun marché trouvé pour la catégorie **{Topic.Category}**.
+
+        # Branch: By supplier
+        - id: supplierBranch
+          condition: =Topic.SearchType = "bySupplier"
+          actions:
+            - kind: Question
+              id: askSupplier
+              variable: init:Topic.SupplierName
+              prompt: Quel fournisseur recherchez-vous ?
+              entity: StringPrebuiltEntity
+
+            - kind: SearchAndSummarizeContent
+              id: searchBySupplier
+              variable: Topic.Answer
+              userInput: =Concatenate("Recherche tous les marchés où le fournisseur ", Topic.SupplierName, " apparaît (comme candidat ou attributaire). Pour chaque marché, indique : référence, rôle du fournisseur (attributaire/candidat), montant proposé, note obtenue. Présente sous forme de tableau.")
+              moderationLevel: Low
+
+            - kind: ConditionGroup
+              id: hasSupplierAnswer
+              conditions:
+                - id: supplierAnswerFound
+                  condition: =!IsBlank(Topic.Answer)
+                  actions:
+                    - kind: SendActivity
+                      id: sendSupplierAnswer
+                      activity: =Topic.Answer
+              elseActions:
+                - kind: SendActivity
+                  id: noSupplierResult
+                  activity: Je n'ai trouvé aucun marché impliquant **{Topic.SupplierName}** dans la base documentaire.
+
+    - kind: EndDialog
+      id: endSearchMarche
+      clearTopicQueue: true

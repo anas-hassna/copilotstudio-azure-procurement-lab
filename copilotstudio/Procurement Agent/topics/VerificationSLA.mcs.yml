@@ -1,0 +1,131 @@
+mcs.metadata:
+  componentName: Vérification SLA et pénalités
+  description: "Utilise ce topic quand un acheteur veut vérifier ou analyser les clauses contractuelles d'un marché public : SLA (Service Level Agreement), pénalités de retard, délais de livraison, GTI (Garantie de Temps d'Intervention), GTR (Garantie de Temps de Rétablissement), astreinte, disponibilité, maintenance préventive et curative, clauses de résiliation, garanties de bonne exécution, assurances, et conditions de reconduction. Inclut aussi la comparaison de SLA entre marchés et l'identification des risques contractuels."
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  priority: 2
+  intent: {}
+
+  actions:
+    - kind: Question
+      id: askSLAReference
+      interruptionPolicy:
+        allowInterruption: true
+      variable: init:Topic.Reference
+      prompt: Pour quel marché souhaitez-vous vérifier les SLA et pénalités ? Donnez la référence (ex: AO-2024-DM-0488) ou décrivez le marché.
+      entity: StringPrebuiltEntity
+
+    - kind: Question
+      id: askSLAFocus
+      interruptionPolicy:
+        allowInterruption: true
+      variable: init:Topic.SLAFocus
+      prompt: |
+        Quel aspect souhaitez-vous analyser en priorité ?
+        1. **delivery** - Délais de livraison et pénalités de retard
+        2. **availability** - Disponibilité, GTI/GTR, astreinte
+        3. **termination** - Clauses de résiliation et garanties
+        4. **all** - Analyse complète de toutes les clauses
+
+        Répondez par : delivery, availability, termination ou all.
+      entity: StringPrebuiltEntity
+
+    - kind: ConditionGroup
+      id: slaFocusBranch
+      conditions:
+        - id: deliveryFocus
+          condition: =Topic.SLAFocus = "delivery"
+          actions:
+            - kind: SearchAndSummarizeContent
+              id: searchDeliverySLA
+              variable: Topic.Answer
+              userInput: =Concatenate("Pour le marché ", Topic.Reference, ", extrais toutes les clauses relatives aux délais de livraison : délai standard, délai urgent, pénalités de retard (montant ou pourcentage par jour), franchise éventuelle, conditions de force majeure. Présente sous forme de tableau : | Clause | Valeur | Pénalité associée |")
+              moderationLevel: Low
+
+        - id: availabilityFocus
+          condition: =Topic.SLAFocus = "availability"
+          actions:
+            - kind: SearchAndSummarizeContent
+              id: searchAvailabilitySLA
+              variable: Topic.Answer
+              userInput: =Concatenate("Pour le marché ", Topic.Reference, ", extrais toutes les clauses de disponibilité : taux de disponibilité exigé, GTI (Garantie de Temps d'Intervention), GTR (Garantie de Temps de Rétablissement), astreinte 24/7, maintenance préventive/curative, pénalités en cas de non-respect. Tableau : | SLA | Objectif | Pénalité si non-respect |")
+              moderationLevel: Low
+
+        - id: terminationFocus
+          condition: =Topic.SLAFocus = "termination"
+          actions:
+            - kind: SearchAndSummarizeContent
+              id: searchTerminationSLA
+              variable: Topic.Answer
+              userInput: =Concatenate("Pour le marché ", Topic.Reference, ", extrais les clauses de résiliation (résiliation pour faute, pour motif d'intérêt général, à l'initiative du titulaire), les garanties exigées (garantie de bonne exécution, retenue de garantie), les assurances obligatoires, et les conditions de renouvellement/reconduction.")
+              moderationLevel: Low
+
+      elseActions:
+        - kind: SearchAndSummarizeContent
+          id: searchAllSLA
+          variable: Topic.Answer
+          userInput: =Concatenate("Pour le marché ", Topic.Reference, ", fais une analyse exhaustive de toutes les clauses contractuelles : 1) Délais de livraison et pénalités de retard 2) Disponibilité, GTI, GTR, astreinte 3) Maintenance préventive et curative 4) Clauses de résiliation 5) Garanties et assurances 6) Conditions de reconduction. Pour chaque clause, indique la valeur contractuelle et la pénalité associée. Utilise des tableaux.")
+          moderationLevel: Low
+
+    - kind: ConditionGroup
+      id: hasSLAAnswer
+      conditions:
+        - id: slaAnswerFound
+          condition: =!IsBlank(Topic.Answer)
+          actions:
+            - kind: SendActivity
+              id: sendSLAAnswer
+              activity: =Topic.Answer
+
+            # Offer follow-up
+            - kind: Question
+              id: askSLAFollowup
+              interruptionPolicy:
+                allowInterruption: true
+              variable: init:Topic.SLAFollowup
+              prompt: |
+                Souhaitez-vous approfondir un aspect ?
+                1. **compare** - Comparer avec un autre marché similaire
+                2. **risk** - Identifier les risques et points de vigilance
+                3. **done** - Non, c'est suffisant
+
+                Répondez par : compare, risk ou done.
+              entity: StringPrebuiltEntity
+
+            - kind: ConditionGroup
+              id: followupBranch
+              conditions:
+                - id: compareBranch
+                  condition: =Topic.SLAFollowup = "compare"
+                  actions:
+                    - kind: SearchAndSummarizeContent
+                      id: compareSLA
+                      variable: Topic.CompareAnswer
+                      userInput: =Concatenate("Trouve un marché similaire au marché ", Topic.Reference, " (même catégorie ou même type de produit) et compare les SLA : délais, pénalités, GTI/GTR, disponibilité. Tableau comparatif : | Clause | Marché ", Topic.Reference, " | Marché similaire | Commentaire |")
+                      moderationLevel: Low
+                    - kind: SendActivity
+                      id: sendCompare
+                      activity: =Topic.CompareAnswer
+
+                - id: riskBranch
+                  condition: =Topic.SLAFollowup = "risk"
+                  actions:
+                    - kind: SearchAndSummarizeContent
+                      id: riskAnalysis
+                      variable: Topic.RiskAnswer
+                      userInput: =Concatenate("Pour le marché ", Topic.Reference, ", identifie les risques liés aux SLA : clauses manquantes, pénalités trop faibles, absence de GTR, délais trop longs par rapport aux standards hospitaliers. Donne des recommandations d'amélioration.")
+                      moderationLevel: Low
+                    - kind: SendActivity
+                      id: sendRisk
+                      activity: =Topic.RiskAnswer
+
+      elseActions:
+        - kind: SendActivity
+          id: noSLAResult
+          activity: Je n'ai pas trouvé d'informations SLA pour le marché **{Topic.Reference}**. Vérifiez la référence ou décrivez le marché autrement.
+
+    - kind: EndDialog
+      id: endSLA
+      clearTopicQueue: true
