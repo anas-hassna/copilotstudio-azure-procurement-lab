@@ -1,5 +1,5 @@
 locals {
-  name_suffix = var.environment_name
+  name_suffix  = "${var.environment_name}-${var.unique_suffix}"
   default_tags = merge(var.tags, {
     purpose    = "procurement-rag-poc"
     managed-by = "terraform"
@@ -23,7 +23,7 @@ resource "azurerm_resource_group" "this" {
 resource "azurerm_search_service" "this" {
   name                          = "search-procurement-${local.name_suffix}"
   resource_group_name           = azurerm_resource_group.this.name
-  location                      = azurerm_resource_group.this.location
+  location                      = var.search_location != "" ? var.search_location : azurerm_resource_group.this.location
   sku                           = var.search_sku
   semantic_search_sku           = "standard"
   tags                          = local.default_tags

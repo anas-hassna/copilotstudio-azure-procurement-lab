@@ -3,6 +3,7 @@ tenant_id          = "00000000-0000-0000-0000-000000000000"
 resource_group_name = "rg-procurement-rag"
 location           = "swedencentral"
 environment_name   = "poc"
+unique_suffix      = "GENERATED_BY_INIT_SCRIPT"
 
 # AI Search - basic is enough for POC (free tier has no skillset support)
 search_sku = "basic"

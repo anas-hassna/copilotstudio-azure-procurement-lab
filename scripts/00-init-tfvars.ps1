@@ -3,8 +3,9 @@
     Initializes terraform.tfvars from the current Azure CLI session.
 
 .DESCRIPTION
-    Reads subscription_id and tenant_id from the active Azure CLI account
-    and generates infra/terraform.tfvars with the correct values.
+    Reads subscription_id and tenant_id from the active Azure CLI account,
+    generates a unique alphanumeric suffix for globally unique resource names,
+    and creates infra/terraform.tfvars.
     Run this after 'az login' and before 'terraform apply'.
 #>
 
@@ -30,6 +31,11 @@ $subscriptionName = $account.name
 Write-Host "  Subscription : $subscriptionName ($subscriptionId)" -ForegroundColor Green
 Write-Host "  Tenant       : $tenantId" -ForegroundColor Green
 
+# ---- Generate unique suffix (6 chars, lowercase alphanumeric) ----
+$chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+$uniqueSuffix = -join (1..6 | ForEach-Object { $chars[(Get-Random -Maximum $chars.Length)] })
+Write-Host "  Unique suffix: $uniqueSuffix" -ForegroundColor Green
+
 # ---- Generate terraform.tfvars ----
 if (Test-Path $tfvarsFile) {
     Write-Host ""
@@ -41,9 +47,6 @@ if (Test-Path $tfvarsFile) {
     }
 }
 
-$content = Get-Content $exampleFile -Raw
-$content = $content -replace '00000000-0000-0000-0000-000000000000', ''
-# Set values individually to handle both placeholders
 $lines = Get-Content $exampleFile
 $output = @()
 foreach ($line in $lines) {
@@ -51,6 +54,8 @@ foreach ($line in $lines) {
         $output += "subscription_id    = `"$subscriptionId`""
     } elseif ($line -match '^\s*tenant_id\s*=') {
         $output += "tenant_id          = `"$tenantId`""
+    } elseif ($line -match '^\s*unique_suffix\s*=') {
+        $output += "unique_suffix      = `"$uniqueSuffix`""
     } else {
         $output += $line
     }
@@ -62,6 +67,6 @@ Write-Host ""
 Write-Host "Created: infra/terraform.tfvars" -ForegroundColor Green
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Cyan
-Write-Host "  cd infra"
+Write-Host "  cd ../infra"
 Write-Host "  terraform init"
 Write-Host "  terraform apply"
