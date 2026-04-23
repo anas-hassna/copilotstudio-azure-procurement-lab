@@ -24,8 +24,6 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "ms-copilotstudio.vscode-copilotstudio",
-        "microsoft-IsvExpTools.powerplatform-vscode",
         "ms-azuretools.vscode-azurecli",
         "ms-vscode.azure-account",
         "hashicorp.terraform",
