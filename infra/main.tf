@@ -111,7 +111,7 @@ resource "azuread_application" "search_sp" {
     resource_app_id = "00000003-0000-0000-c000-000000000000" # Microsoft Graph
 
     resource_access {
-      id   = "332a536c-c7ef-4017-ab91-336970924f0d" # Sites.Read.All (application)
+      id   = "a82116e5-55eb-4c41-a434-62fe8a61c773" # Sites.FullControl.All (application) - required for ACL sync
       type = "Role"
     }
   }
@@ -134,7 +134,7 @@ data "azuread_service_principal" "msgraph" {
 }
 
 resource "azuread_app_role_assignment" "sites_read_all" {
-  app_role_id         = "332a536c-c7ef-4017-ab91-336970924f0d" # Sites.Read.All
+  app_role_id         = "a82116e5-55eb-4c41-a434-62fe8a61c773" # Sites.FullControl.All
   principal_object_id = azuread_service_principal.search_sp.object_id
   resource_object_id  = data.azuread_service_principal.msgraph.object_id
 }
